@@ -77,7 +77,7 @@ rhoF = CP.PropsSI("D", "T", T_a_0, "P", P_0, "Water")#kg/m^3, Compute water dens
 
 mfIn = v_dot_W_n*rhoF/1000/60.0 #hot water mass flow rate, kg/s aka m_dot_W(X=n)
 
-m_dot_A_0 = mean([6344,8784]) #kg/h, Rules of thumb states air flow rates between 6344 - 8784 kg/h., using the average expected air flow rate AKA ma
+m_dot_A_0 = 6000 #kg/h,
 m_dot_A_0 = m_dot_A_0/3600 #kg/s AKA ma
 
 velocity = m_dot_A_0/(rhoA*A_c) #m/s
@@ -155,11 +155,10 @@ Ta = solution[Int(length(solution)/4)*2+1:Int(length(solution)/4)*3]
 wa = solution[Int(length(solution)/4)*3+1:Int(length(solution)/4)*4]
 
 
-
-plot(mf)
-plot(Tf, label="Tf")
+plot(mf, ylabel = "Fluid mass, kg", xlabel = "Height, m")
+plot(Tf, label="Tf", ylabel = "Temperature, K", xlabel = "Height, m")
 plot!(Ta, label="Ta")
-plot(wa)
+plot(wa, ylabel = "Humidity Ratio", xlabel = "Height, m")
 
 println("Solutions")
 println(mf)
@@ -170,25 +169,8 @@ println(wa)
 println("Heat Capacity")
 println(mf[1]*Hf(Tf[1]) - mf[end]*Hf(Tf[end]))
 
-#    m_dot = inputs[0:int(x_n/dx)-1]
-#    T = inputs[int(x_n/dx):]
 
-#    errors = np.ones((4, int(x_n/dx)))
-#    for distance in range(0, len(m_dot)-1):
-#        reynolds = velocity * dx/viscosityAir
-#        Sc = viscosityAir/(rhoA*Dab)
-#        Sh = 0.43*reynolds**0.58*Sc**0.4
-#        hm = Dab*Sh/l
-#        rhoFs = CP.PropsSI("D", "T", T[int(distance)], "Q", 1, "Water")
-
-        #State Calculations
-    #    errors[0][int(distance)] = (m_dot[int(distance)+1] - m_dot[int(distance)])/dx - hm*A_p_0*(rhoFs - rhoFinf)*A_c/0.622/velocity
-    #    errors[1][int(distance)] = (m_dot[int(distance)+1] - m_dot[int(distance)])/dx - m_a*W_a_0 #unsure if this is implemented correctly
-    #    errors[2][int(distance)] = ((m_dot[int(distance)+1] - m_dot[int(distance)])/dx)*c_p*(T_a[int(distance)+1] - T_a[int(distance)]) - hm*A_p_0*(T_a_0-T_f[int(distance)])*A_c/0.622/v_p_0
-    #    errors[3][int(distance)] = m_a*c_p*(T_a[int(distance)+1] - T_a[int(distance)])-((m_dot[int(distance)+1] - m_dot[int(distance)])/dx)*c_p*(T_a[int(distance)+1]
-
-        #Boundary Conditions
-    #    errors[0][-1] = m_dot[-1] - m_dot_W_n
-    #    errors[1][-1] = m_a[-1] - (v_total - (W_a_0*(v_total))
-    #    errors[2][-1] = T_f[-1] - t_outlet_water
-    #    errors[3][-1] = T_a[-1] - T_a_0
+percent = 1+ mf[Int(height/dx)]-mf[1]/mf[Int(height/dx)]
+TfOut = Tf[1]
+waOut = wa[Int(height/dx)]
+TaOut = Ta[Int(height/dx)]
