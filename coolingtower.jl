@@ -2,12 +2,20 @@
 #Shreyas Sudhakar
 #2018
 
+using ExcelReaders
 using DifferentialEquations
 using NLsolve
 using Plots
 using PyCall
 using Statistics
 @pyimport CoolProp.CoolProp as CP
+
+xls = openxl("seattledailydata.xlsx") #open excel steam table file
+dailyData = readxlsheet(xls, "seattledailydata") #read in properties as an array
+
+plot(dailyData[2:end, 1], dailyData[2:end, 2], xlabel="Date", ylabel = "Relative Humidity (%)", title = "Average Daily Relative Humidity", label = "Seattle, WA Boeing Field")
+plot(dailyData[2:end, 1], dailyData[2:end, 3], xlabel="Date", ylabel = "Temperature (Degrees C)", title = "Average Daily Dry Bulb Temperature", label = "Seattle, WA Boeing Field")
+
 
 function Hf(T)
     if  (T < 273.15 || T > 645 ) #solution moved out of coolprop bounds
