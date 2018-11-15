@@ -86,6 +86,9 @@ makeup_power = []
 waterpump_power = []
 heat_load = []
 total_power = []
+flow_makeup = []
+tf_out = []
+water_flow = []
 
 # diagnostic = []
 # diagnostic2 = []
@@ -104,6 +107,35 @@ total_power = []
 # print(diagnostic3) #Troubleshooting input parameters
 
 
+#Economic Parameters
+discount = 0.1 #discount rate
+projectLife = 25
+inflation = 0.04 #inflation rate
+inflation_fuel = 0.013 #Fuel inflation rate
+cost_electricity = 0.054 #$ per kWh, electricity cost
+heatLoadValue = 0.025 #$ per kWh, heat load value
+cost_makeup = 0.23 #$ per m^3, cost of makeup water
+
+
+#Fan
+nfan = 0.7 #Efficiency of fan
+dPfan = 500 #Pa, pressure differential fan needs to overcome
+
+#Heat Exchanger
+U = 1200 #W/m^2/K, heat transfer coefficient of hex
+dhextube = 0.025 #m, diameter of heat exchanger tubes
+Tfshellin = 323.5 #K, heat exchanger shell side inlet water temperature
+vfshellin = 0.75 #L/min, heat exchanger shell side inlet water flow rate
+
+#Water Pump
+TfmakeupIn = 288.15 #Kelvin, makeup water temerature
+npump = 0.72 #Efficiency of water pump
+lpiping = 20 #meters, length of water pipe in tower
+roughness = 0.0001 #pipe roughness
+g = 1 #kg * m/N/s^2, acceleration due to gravity
+viscosityF = 0.001 #N*s/m^2, water viscosity
+
+
 for day in 1:(Int(length(dailyData)/3-1))
     #Boundary Conditions
     TaIn = dailyData[day+1, 3] + 273.15 #Kelvin, atmopheric air temp AKA T_a(X=0) AKA TaIn
@@ -111,34 +143,6 @@ for day in 1:(Int(length(dailyData)/3-1))
     waIn = CP.HAPropsSI("W","T",TaIn,"P",P_0,"R",rh) #Humidity Ratio atmospheric AKA W_a(X=0) AKA waIn
     TfIn = 312 #Kelvin, hot water temperature AKA T_F(X=n) aka TfIn
     v_dot_W_n = 1 #L/min*m^2, hot water volumetric flow rate AKA v_dot_W(X=n)
-
-    #Economic Parameters
-    discount = 0.1 #discount rate
-    projectLife = 25
-    inflation = 0.04 #inflation rate
-    inflation_fuel = 0.013 #Fuel inflation rate
-    cost_electricity = 0.054 #$ per kWh, electricity cost
-    heatLoadValue = 0.025 #$ per kWh, heat load value
-    cost_makeup = 0.23 #$ per m^3, cost of makeup water
-
-
-    #Fan
-    nfan = 0.7 #Efficiency of fan
-    dPfan = 500 #Pa, pressure differential fan needs to overcome
-
-    #Heat Exchanger
-    U = 1200 #W/m^2/K, heat transfer coefficient of hex
-    dhextube = 0.025 #m, diameter of heat exchanger tubes
-    Tfshellin = 323.5 #K, heat exchanger shell side inlet water temperature
-    vfshellin = 0.75 #L/min, heat exchanger shell side inlet water flow rate
-
-    #Water Pump
-    TfmakeupIn = 288.15 #Kelvin, makeup water temerature
-    npump = 0.72 #Efficiency of water pump
-    lpiping = 20 #meters, length of water pipe in tower
-    roughness = 0.0001 #pipe roughness
-    g = 1 #kg * m/N/s^2, acceleration due to gravity
-    viscosityF = 0.001 #N*s/m^2, water viscosity
 
     #property lookups at initial conditions
     rhoA = CP.PropsSI("D", "T", TaIn, "P", P_0, "Air") #kg/m^3, Compute air density at atmospheric conditions
@@ -261,6 +265,9 @@ for day in 1:(Int(length(dailyData)/3-1))
     push!(waterpump_power, Pf) #return the water pump power for the day
     push!(heat_load, load) #Return the heat load for the day
     push!(total_power, Power) #Return the total power for the day
+    push!(flow_makeup, vfmakeup)#Return the makeup water flow rate for the day
+    push!(tf_out, TfOut)#Return the outlet fluid temp
+    push!(water_flow, vf)
 end
 
 
@@ -269,11 +276,22 @@ plot(dailyData[2:end, 1], makeup_power, xlabel="Date", ylabel = "Power (kW)", ti
 plot(dailyData[2:end, 1], waterpump_power, xlabel="Date", ylabel = "Power (kW)", title = "Water Pump Power", label = "Seattle, WA Boeing Field")
 plot(dailyData[2:end, 1], heat_load, xlabel="Date", ylabel = "Load (kW)", title = "Heat Load", label = "Seattle, WA Boeing Field")
 plot(dailyData[2:end, 1], total_power, xlabel="Date", ylabel = "Power (kW)", title = "Total Power", label = "Seattle, WA Boeing Field")
+plot(dailyData[2:end, 1], flow_makeup, xlabel="Date", ylabel = "Flow Rate (kg/s)", title = "Makeup Water Mass Flow Rate", label = "Seattle, WA Boeing Field")
+
+aHex = (maximum(heat_load)*U)/(Tfshellin-minimum(tf_out))
 
 
 #System Capital Costing
-cost_coolingtower = 120000*((vf*1000)/570)^0.65 #Capital Cost of cooling tower
+cost_coolingtower = 120000*((maximum(water_flow)*1000)/570)^0.65 #Capital Cost of cooling tower
 cost_heatexchanger = 500*(aHex)^0.65 #Heat Exchanger Capital Cost
+
+#Project Life Costs
+life_cost_makeup = cost_makeup*(60*24*365*projectLife)*mean(flow_makeup) #$, Cost of makeup water over project life
+life_cost_power = cost_electricity*(60*24*365*projectLife)*mean(total_power) #$, Cost of power of project life
+life_value_heatload = heatLoadValue*(60*24*365*projectLife)*mean(-1*(heat_load)) #$, Value of heat load over project life
+
+#Net Present Value
+npv = life_value_heatload - life_cost_power - life_cost_makeup - cost_coolingtower - cost_heatexchanger
 
 #Toggle comments for plotting
 # plot(mf, ylabel = "Fluid mass flow rate, kg/s", xlabel = "Height, m")
