@@ -14,7 +14,8 @@ using Statistics
 energyUse = []
 function getNetPresentValue()
     global energyuse
-    annualTowerResults = runAnnualSimulation(5) # runAnnualSimulation(365)
+    annualTowerResults = runAnnualSimulation(7) # runAnnualSimulation(365)
+    annualDemand = runAnnualDemand(7)
     energyuse = calculateEnergyUse(annualTowerResults)
     annualCosts = calculateAnnualCosts(energyuse)
     capitalCosts = calculateCapitalCosts(mfIn, hxD, hxL)
@@ -113,7 +114,7 @@ function calculateCapitalCosts(mfIn, hxD, hxL)
     return [towerCost, hxCost]
 end
 
-function runAnnualSimulation(days=5)
+function runAnnualSimulation(days=7)
     global dailyData
     xls = openxl("seattledailydata.xlsx") #open excel steam table file
     dailyData = readxlsheet(xls, "seattledailydata") #read in properties as an array
@@ -123,7 +124,7 @@ function runAnnualSimulation(days=5)
     airFlow = zeros(days)
     hxColdInletT = zeros(days)
     hxColdOutletT = zeros(days)
-    for date in 1:(Int(length(dailyData)/3-1))
+    for date in 1:(Int(length(dailyData)/4-1))
         #global day, makeup, hxColdInletT, hxColdOutletT
         day = day + 1
 
@@ -164,156 +165,18 @@ function runAnnualSimulation(days=5)
     return [makeup, hxColdInletT, hxColdOutletT, airFlow]
 end
 
-
-#
-# #Water Pump
-#
-#
-#
-#
-# #Boundary Conditions
-# rh = (dailyData[day+1, 2])/100 #relative humidity, percet
-#
-# rhoFmakeup = CP.PropsSI("D", "T", TfmakeupIn, "P", P_0, "Water")#kg/m^3, Compute water density at atmospheric conditions
-# rhoHex = CP.PropsSI("D", "T", hxHotT, "P", P_0, "Water")#kg/m^3, Compute water density at atmospheric conditions
-#
-#
-# vaIn = ma / rhoA #m^3/s, Volumetric flow rate
-#
-#
-# #Initial Guesses
-# mf = LinRange(0.0131979, mfIn, Int(towerHeight/dx))
-# Tf = LinRange(TfIn-3, TfIn, Int(towerHeight/dx))
-# Ta = LinRange(TaIn, TaIn+3, Int(towerHeight/dx))
-# wa = LinRange(waIn, 0.00741533, Int(towerHeight/dx))
-#
-# inputs0 = reshape(hcat(
-#     mf,
-#     Tf,
-#     Ta,
-#     wa), 1, Int(towerHeight/dx)*4)
-#
-# result = nlsolve(towerSimulation, inputs0, method=:trust_region, iterations=1000, xtol=0.01)
-#
-# println(result)
-#
-# solution = result.zero
-# print(result.zero)
-#
-#
-# mf = solution[1:Int(length(solution)/4)*1]
-# Tf = solution[Int(length(solution)/4)*1+1:Int(length(solution)/4)*2]
-# Ta = solution[Int(length(solution)/4)*2+1:Int(length(solution)/4)*3]
-# wa = solution[Int(length(solution)/4)*3+1:Int(length(solution)/4)*4]
-#
-# percent = 1+ mf[Int(towerHeight/dx)]-mf[1]/mf[Int(towerHeight/dx)]
-# TfOut = Tf[1]
-# waOut = wa[Int(towerHeight/dx)]
-# TaOut = Ta[Int(towerHeight/dx)]
-#
-# #Fan Calculations
-# Pfan = (vaIn*fanDeltaP/etaF)/1000 #kW, fan power
-#
-# #Makeup Water Calculations
-# mfmakeup = mfIn-mf[1] #kg/s, Mass flow rate of makeup water needed
-#
-# #Water Pump Calculations
-# vf = mfIn*60/rhoF #m^3/min, volumetric flow rate of water
-# Pf = (1.67*vf*dPpipe)/etaP #kW, Power for makeup water pump (Cooling tower rules of thumb document)
-#
-# #Power
-# Power = Pf + Pmakeup + Pfan #kW, Total tower power consumption
-#
-# #Heat Load
-# load = (vfshellin*rhoHex)*Cpw*(hxHotT-TfOut) #kW, heat load
-# # load = 1000 #Watts, cooling load from business building - WAS PREVIOUSLY USING A CONSTANT VALUE
-#
-#
-# push!(fan_power, Pfan) #Return the fan power for the day
-# push!(makeup_power, Pmakeup) #Return the makeup pump power for the day
-# push!(waterpump_power, Pf) #return the water pump power for the day
-# push!(heat_load, load) #Return the heat load for the day
-# push!(total_power, Power) #Return the total power for the day
-# push!(flow_makeup, vfmakeup)#Return the makeup water flow rate for the day
-# push!(tf_out, TfOut)#Return the outlet fluid temp
-# push!(water_flow, vf)
-#
-#
-#
-# plot(dailyData[2:end, 1], fan_power, xlabel="Date", ylabel = "Power (kW)", title = "Fan Power", label = "Seattle, WA Boeing Field")
-# plot(dailyData[2:end, 1], makeup_power, xlabel="Date", ylabel = "Power (kW)", title = "Makeup Water Pump Power", label = "Seattle, WA Boeing Field")
-# plot(dailyData[2:end, 1], waterpump_power, xlabel="Date", ylabel = "Power (kW)", title = "Water Pump Power", label = "Seattle, WA Boeing Field")
-# plot(dailyData[2:end, 1], heat_load, xlabel="Date", ylabel = "Load (kW)", title = "Heat Load", label = "Seattle, WA Boeing Field")
-# plot(dailyData[2:end, 1], total_power, xlabel="Date", ylabel = "Power (kW)", title = "Total Power", label = "Seattle, WA Boeing Field")
-# plot(dailyData[2:end, 1], flow_makeup, xlabel="Date", ylabel = "Flow Rate (kg/s)", title = "Makeup Water Mass Flow Rate", label = "Seattle, WA Boeing Field")
-#
-# aHex = (maximum(heat_load)*hxU)/(hxHotT-minimum(tf_out))
-#
-#
-# #System Capital Costing
-# cost_coolingtower = 120000*((maximum(water_flow)*1000)/570)^0.65 #Capital Cost of cooling tower
-# cost_heatexchanger = 500*(aHex)^0.65 #Heat Exchanger Capital Cost
-#
-# #Project Life Costs
-# life_watercost = watercost*(60*24*365*projectLife)*mean(flow_makeup) #$, Cost of makeup water over project life
-# life_cost_power = electricityCost*(60*24*365*projectLife)*mean(total_power) #$, Cost of power of project life
-# life_value_heatload = heatLoadValue*(60*24*365*projectLife)*mean(-1*(heat_load)) #$, Value of heat load over project life
-#
-# #Net Present Value
-# npv = life_value_heatload - life_cost_power - life_watercost - cost_coolingtower - cost_heatexchanger
-
-#Toggle comments for plotting
-# plot(mf, ylabel = "Fluid mass flow rate, kg/s", xlabel = "Height, m")
-# plot(Tf, label="Tf", ylabel = "Temperature, K", xlabel = "Height, m")
-# plot!(Ta, label="Ta")
-# plot(wa, ylabel = "Humidity Ratio", xlabel = "Height, m")
-#
-# println("Solutions")
-# println(mf)
-# println(Tf)
-# println(Ta)
-# println(wa)
-#
-# println("Heat Capacity")
-# println(mf[1]*Hf(Tf[1]) - mf[end]*Hf(Tf[end]))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# xls = openxl("seattledailydata.xlsx") #open excel steam table file
-# dailyData = readxlsheet(xls, "seattledailydata") #read in properties as an array
-#
-# plot(dailyData[2:end, 1], dailyData[2:end, 2], xlabel="Date", ylabel = "Relative Humidity (%)", title = "Average Daily Relative Humidity", label = "Seattle, WA Boeing Field")
-# plot(dailyData[2:end, 1], dailyData[2:end, 3], xlabel="Date", ylabel = "Temperature (Degrees C)", title = "Average Daily Dry Bulb Temperature", label = "Seattle, WA Boeing Field")
-#
-#
-# #Loop through weather data
-# fan_power = []
-# makeup_power = []
-# waterpump_power = []
-# heat_load = []
-# total_power = []
-# flow_makeup = []
-# tf_out = []
-# water_flow = []
-
-
-
-
-
+function runAnnualDemand(days=7)
+    day = 0
+    demand = zeros(days)
+    for date in 1:(Int(length(dailyData)/4-1))
+        #global day, makeup, hxColdInletT, hxColdOutletT
+        day = day + 1
+        TaIn = dailyData[day+1, 3] + 273.15 #Kelvin, atmopheric air temp AKA T_a(X=0) AKA TaIn
+        GHI = dailyData[day+1, 4] #W/m2, Global Horizontal Irradiance
+        demand[day] = demand(TaIn,GHI)
+    end
+    return demand
+end
 
 function Hf(T)
     if  (T < 273.15 || T > 645 ) #solution moved out of coolprop bounds
@@ -376,6 +239,7 @@ end
 rhoF = 998.9 #kg/m^3, Compute water density at atmospheric conditions, using constant to save computation
 rhoA = 1.103 #kg/m^3, air density at atmospheric conditions, using constant to save computation
 P_0 = 101325 #Pa, atmospheric pressure (aka pAir)
+
 
 #Tower Parameters
 towerHeight = 1 #Meters, cooling tower Height
@@ -450,7 +314,66 @@ hm = Sh * Dab/dropletD #mass transfer coefficient
 #result = nlsolve(towerBalance, [ma])
 #println(result)
 
+#Building Dimensions
+lBuilding = 150 #Feet, length of building
+wBuilding = 275 #Feet, width of building
+hBuilding = 10 #Feet, height of building
+aRoof = lBuilding*wBuilding #ft^2, area of roof (assuming flat roof)
+aWalls = (2*(lBuilding+wBuilding))*hBuilding #ft^2, area of walls
+vBuilding = aRoof*hBuilding #ft^3, volume of building
+vTimber = 0.02 #Volume fraction of building walls made of timber
+tWall = 1/2 #inches, thickness of timber walls
+absorptivity = 0.35 #Absorptivity of timber
+hsummer = 0.09375 #W/m*K, Overall heat transfer coefficient in summer
+hwinter = 0.0894 #W/m*K, Overall heat transfer coefficient in winter
+vGlass = 0.98 #Volume fraction of building walls made of 2 pane glass
+airGap = 3/16 #Inch, air space between panes of glass
+transmitGlass = 0.86 #Solar transmission through glass
 
+#Design Parameters
+nAirChanges = 12 #Target Number of air changes in commercial building
+TInside = 295 #Air conditioner set temperature inside the building
+kTimber = 0.15 #W/mK, thermakl conductivty of pine wood, see https://www.engineeringtoolbox.com/thermal-conductivity-d_429.html
+kFoamConcrete = 0.2 #W/mK, thermal conductivity of Foam (aka Lightweight) concrete, see https://www.engineeringtoolbox.com/thermal-conductivity-d_429.html
+kAir = 0.0262 #W/mK, thermal conductivity of air, see https://www.engineeringtoolbox.com/thermal-conductivity-d_429.html
+eConcrete = 0.85 #emmissivity coefficient of concrete, see https://www.engineeringtoolbox.com/emissivity-coefficients-d_447.html
+
+Cpa = CP.PropsSI("C", "T", TInside, "P", P_0, "Air")#J/kg/K, Compute CP at air temperature inside building
+
+function season(T)
+    if (T > 280) #Setting as arbitrary temperature threshhold for winter weather
+        h = hsummer
+    end
+    h = hwinter
+end
+
+function Qcond(T)
+    Q_cond_roof = (kFoamConcrete*aRoof*(TInside - T))/tWall
+    Q_cond_timber = (kTimber*(aWalls*vTimber)*(TInside - T))/tWall
+    Q_cond_windows = (kAir*(aWalls*vGlass)*(TInside - T))/airGap
+    Qcond = Q_cond_roof + Q_cond_timber + Q_cond_windows
+end
+
+function Qconv(T)
+    h = season(T)
+    Qconv = h*(aWalls + aRoof)*(TInside - T)
+end
+
+function Qrad(T,GHI)
+    Qrad = eConcrete*aRoof*GHI*(TInside^4 - T^4) #Assume that entirety of radiative heat tranfer occurs through roof of building
+end
+
+function Qevap(T)
+    Qevapventilation = rhoA*((nAirChanges*vBuilding)/3600)*Cpa*(TInside - T)
+end
+
+function demand(T,GHI)
+    Qevap = Qevap(T)
+    Qrad = Qrad(T,GHI)
+    Qconv = Qconv(T)
+    Qcond = Qcond(T)
+    demand = Qevap + Qrad + Qconv + Qcond
+end
 
 
 
@@ -487,7 +410,10 @@ waterpumpPower = energyuseT[3, :]
 heatLoad = energyuseT[4, :]
 days = dailyData[2:end, 1]
 
-plot(days, fanPower)
-plot(days, makeuppumpPower)
-plot(days, waterpumpPower)
-plot(days, heatLoad)
+plot(days, fanPower, xlabel="Date", ylabel = "Power (kW)", title = "Fan Power", label = "Seattle, WA Boeing Field")
+plot(days, makeuppumpPower, xlabel="Date", ylabel = "Power (kW)", title = "Makeup Water Pump Power", label = "Seattle, WA Boeing Field")
+plot(days, waterpumpPower, xlabel="Date", ylabel = "Power (kW)", title = "Water Pump Power", label = "Seattle, WA Boeing Field")
+plot(days, heatLoad, xlabel="Date", ylabel = "Load (kW)", title = "Heat Load", label = "Seattle, WA Boeing Field")
+plot(dailyData[2:end, 1], dailyData[2:end, 2], xlabel="Date", ylabel = "Relative Humidity (%)", title = "Average Daily Relative Humidity", label = "Seattle, WA Boeing Field")
+plot(dailyData[2:end, 1], dailyData[2:end, 3], xlabel="Date", ylabel = "Temperature (Degrees C)", title = "Average Daily Dry Bulb Temperature", label = "Seattle, WA Boeing Field")
+plot(days, demand, xlabel="Date", ylabel = "Power (kW)", title = "Building Power Demand", label = "Seattle, WA Boeing Field")
